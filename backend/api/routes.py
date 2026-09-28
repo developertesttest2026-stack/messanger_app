@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import SQLModel,select
-from sqlalchemy.ext.asyncio import AsyncSession
-from api.database import get_session
-from api.auth import verify_code, create_access_token, get_current_user
-from api.models import User, LoginSession
+import secrets
 import uuid
-from datetime import datetime,timedelta,timezone
+from datetime import datetime, timedelta, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import SQLModel, select
+
+from api.auth import create_access_token, get_current_user
+from api.database import get_session
+from api.models import LoginSession, User
 
 router = APIRouter()
 
@@ -15,9 +18,22 @@ class CreateSessionResponse(SQLModel):
     bot_url: str
     expires_in: int
 
+
+class ResolveSessionRequest(SQLModel):
+    session_token: str
+    telegram_id: int
+
+
+class ResolveSessionResponse(SQLModel):
+    telegram_id: int
+    code: str
+    expires_in: int
+
+
 class VerifyCodeRequest(SQLModel):
     session_token: str
     code: str
+
 
 class TokenResponse(SQLModel):
     access_token: str
@@ -47,6 +63,53 @@ async def create_session(session: AsyncSession = Depends(get_session)):
         bot_url=bot_url,
         expires_in=600
     )
+@router.post("/auth/resolve-session", response_model=ResolveSessionResponse)
+async def resolve_session(req: ResolveSessionRequest, session: AsyncSession = Depends(get_session)):
+    result = await session.execute(
+        select(LoginSession).where(
+            LoginSession.session_token == req.session_token,
+            LoginSession.status == "pending"
+        )
+    )
+    login_session = result.scalar_one_or_none()
+
+    if not login_session:
+        raise HTTPException(status_code=400, detail="Сессия не найдена или уже использована")
+
+    if login_session.expires_at < datetime.now(timezone.utc) + timedelta(hours=3):
+        raise HTTPException(status_code=400, detail="Сессия истекла")
+
+    result = await session.execute(
+        select(User).where(User.telegram_id == req.telegram_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        user = User(
+            telegram_id=req.telegram_id,
+            username="",
+            full_name="",
+        )
+        session.add(user)
+        await session.flush()
+
+    code = "".join(secrets.choice("0123456789") for _ in range(6))
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=3, minutes=5)
+
+    login_session.telegram_id = req.telegram_id
+    login_session.code = code
+    login_session.status = "code_sent"
+    login_session.expires_at = expires_at
+    session.add(login_session)
+    await session.commit()
+
+    return ResolveSessionResponse(
+        telegram_id=req.telegram_id,
+        code=code,
+        expires_in=300,
+    )
+
+
 @router.post("/auth/verify", response_model=TokenResponse)
 async def verify_code_endpoint(req: VerifyCodeRequest, session: AsyncSession = Depends(get_session)):
     result = await session.execute(
@@ -60,18 +123,16 @@ async def verify_code_endpoint(req: VerifyCodeRequest, session: AsyncSession = D
     if not login_session:
         raise HTTPException(status_code=400, detail="Сессия не найдена или уже использована")
 
-    if login_session.expires_at < datetime.now(timezone.utc)+timedelta(hours=3):
+    if login_session.expires_at < datetime.now(timezone.utc) + timedelta(hours=3):
         raise HTTPException(status_code=400, detail="Сессия истекла")
 
     if login_session.code != req.code:
         raise HTTPException(status_code=400, detail="Неверный код")
 
-    # Помечаем сессию как проверенную
     login_session.status = "verified"
     session.add(login_session)
     await session.commit()
 
-    # Получаем пользователя
     result = await session.execute(
         select(User).where(User.telegram_id == login_session.telegram_id)
     )
