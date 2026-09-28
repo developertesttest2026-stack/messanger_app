@@ -1,5 +1,5 @@
 // frontend/app.js
-const API_BASE = window.location.origin;
+const API_BASE = "";
 
 let sessionToken = null;
 let expiresAt = null;
@@ -40,7 +40,7 @@ async function checkAuth() {
 async function initLogin() {
     const user = await checkAuth();
     if (user) {
-        window.location.href = "/profile";
+        window.location.href = "/profile.html";
         return;
     }
 
@@ -130,7 +130,7 @@ async function verifyCode() {
 
         clearInterval(timerInterval);
         setToken(data.access_token);
-        window.location.href = "/profile";
+        window.location.href = "/profile.html";
     } catch (e) {
         errorEl.textContent = "Ошибка сети";
         btn.disabled = false;
@@ -182,7 +182,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const path = window.location.pathname;
     if (path === "/" || path.endsWith("login.html")) {
         initLogin();
-    } else if (path === "/profile" || path.endsWith("profile.html")) {
+    } else if (path.endsWith("profile.html")) {
         initProfile();
     }
 });

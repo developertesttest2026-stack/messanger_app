@@ -140,7 +140,7 @@ async def verify_code_endpoint(req: VerifyCodeRequest, session: AsyncSession = D
 
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    token = create_access_token({"sub": user.telegram_id})
+    token = create_access_token({"sub": str(user.telegram_id)})
     return TokenResponse(
         access_token=token,
         user={
