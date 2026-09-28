@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мессенджер</title>
+</head>
+<body>
+    <div class="app">
+        <aside class="sidebar">
+            <h2>Комнаты</h2>
+            <button id="createRoomBtn">+ Создать комнату</button>
+            <ul id="roomList"></ul>
+        </aside>
+
+        <main class="content">
+            <div id="roomHeader"></div>
+            <div id="messages"></div>
+            <form id="messageForm">
+                <input type="text" id="messageInput" placeholder="Напишите сообщение...">
+                <button type="submit">Отправить</button>
+            </form>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

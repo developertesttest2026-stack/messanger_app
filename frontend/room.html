@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Комната чата</title>
+</head>
+<body>
+    <div class="room-page">
+        <header class="room-header">
+            <a href="/dashboard">← Назад к комнатам</a>
+            <h1 id="roomTitle">Комната</h1>
+        </header>
+
+        <main class="room-chat">
+            <div id="roomMessages" class="messages"></div>
+
+            <form id="roomMessageForm">
+                <input type="text" id="messageInput" placeholder="Напишите сообщение..." required>
+                <button type="submit">Отправить</button>
+            </form>
+        </main>
+    </div>
+
+    <script src="/static/room.js"></script>
+</body>
+</html>
