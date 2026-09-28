@@ -7,7 +7,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.database import init_db
-from api.routes import router
+from api.routes import router as auth_router
+from api.routes import router as rooms_router
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
@@ -37,6 +38,7 @@ async def serve_profile_page():
     return FileResponse(FRONTEND_DIR / "profile.html")
 
 
-app.include_router(router)
+app.include_router(rooms_router)
+app.include_router(auth_router)
 
 
