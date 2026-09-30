@@ -16,15 +16,26 @@ function clearToken() {
     localStorage.removeItem("access_token");
 }
 
+async function fetchWithAuth(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    const token = getToken();
+
+    if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+    }
+    if (options.body && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    return fetch(url, { ...options, headers });
+}
+
 // ===== Проверка авторизации =====
 async function checkAuth() {
-    const token = getToken();
-    if (!token) return null;
+    if (!getToken()) return null;
 
     try {
-        const res = await fetch(`${API_BASE}/profile`, {
-            headers: { "Authorization": `Bearer ${token}` }
-        });
+        const res = await fetchWithAuth(`${API_BASE}/api/profile`);
         if (!res.ok) {
             clearToken();
             return null;
@@ -40,13 +51,13 @@ async function checkAuth() {
 async function initLogin() {
     const user = await checkAuth();
     if (user) {
-        window.location.href = "/profile.html";
+        window.location.href = "/dashboard";
         return;
     }
 
     // Создаём сессию
     try {
-        const res = await fetch(`${API_BASE}/auth/create-session`, {
+        const res = await fetchWithAuth(`${API_BASE}/auth/create-session`, {
             method: "POST"
         });
         const data = await res.json();
@@ -114,7 +125,7 @@ async function verifyCode() {
     btn.textContent = "Проверяем...";
 
     try {
-        const res = await fetch(`${API_BASE}/auth/verify`, {
+        const res = await fetchWithAuth(`${API_BASE}/auth/verify`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_token: sessionToken, code })
@@ -130,7 +141,7 @@ async function verifyCode() {
 
         clearInterval(timerInterval);
         setToken(data.access_token);
-        window.location.href = "/profile.html";
+        window.location.href = "/dashboard";
     } catch (e) {
         errorEl.textContent = "Ошибка сети";
         btn.disabled = false;
@@ -180,9 +191,9 @@ function logout() {
 // ===== Инициализация =====
 document.addEventListener("DOMContentLoaded", () => {
     const path = window.location.pathname;
-    if (path === "/" || path.endsWith("login.html")) {
+    if (path === "/" || path.endsWith("login")) {
         initLogin();
-    } else if (path.endsWith("profile.html")) {
+    } else if (path === "/profile") {
         initProfile();
     }
 });

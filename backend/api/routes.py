@@ -151,7 +151,7 @@ async def verify_code_endpoint(req: VerifyCodeRequest, session: AsyncSession = D
         }
     )
 
-@router.get("/profile")
+@router.get("/api/profile")
 async def get_profile(user: User = Depends(get_current_user)):
     return {
         "id": user.id,
