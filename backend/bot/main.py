@@ -9,10 +9,13 @@ import settings
 API_BASE_URL = "http://127.0.0.1:8000"
 
 
-async def resolve_session_with_api(session_token: str, telegram_id: int) -> str:
+async def resolve_session_with_api(session_token: str, telegram_id: int, fullname:str, username:str) -> str:
     payload = json.dumps({
         "session_token": session_token,
         "telegram_id": telegram_id,
+        "username": username,
+        "full_name":fullname,
+     
     }).encode("utf-8")
 
     request = urllib.request.Request(
@@ -28,10 +31,12 @@ async def resolve_session_with_api(session_token: str, telegram_id: int) -> str:
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    tg_id = update.effective_user.id
+    tg_id = update.effective_user.id 
+    full_name = f"{update.effective_user.first_name} {update.effective_user.last_name}"
+    username = f"{update.effective_user.username}"
 
+    
     session_token = context.args[0] if context.args else None
-
     if not session_token:
         await update.message.reply_text(
             "❌ Сессия не найдена.\n\n"
@@ -40,8 +45,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    try:
-        code = await resolve_session_with_api(session_token, tg_id)
+    try: 
+        code = await resolve_session_with_api(session_token, tg_id, full_name, username)
     except Exception:
         await update.message.reply_text(
             "❌ Сессия не найдена или уже использована.\n\n"

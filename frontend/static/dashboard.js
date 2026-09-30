@@ -97,7 +97,7 @@ async function loadMessages(roomId) {
     messages.forEach(msg => {
         const element = document.createElement("div");
         element.className = "message";
-        element.textContent = `${msg.user_id}: ${msg.text}`;
+        element.textContent = `${msg.author_full_name}: ${msg.text}`;
         container.appendChild(element);
     });
 }

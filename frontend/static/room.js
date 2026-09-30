@@ -65,3 +65,83 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("roomMessageForm").addEventListener("submit", sendMessage);
 });
+
+
+
+const clientId = crypto.randomUUID();
+let lastPresenceEventId = 0;
+let receivedInitialActivity = false;
+
+async function sendPresenceHeartbeat() {
+    await fetchWithAuth(`${API_BASE}/rooms/${roomId}/presence`, {
+        method: "POST",
+        body: JSON.stringify({ client_id: clientId }),
+    });
+}
+
+async function pollRoomActivity() {
+    try {
+        const response = await fetchWithAuth(
+            `${API_BASE}/rooms/${roomId}/activity?after_id=${lastPresenceEventId}`
+        );
+        if (!response.ok) return;
+
+        const data = await response.json();
+        renderActiveUsers(data.active_users);
+
+        for (const event of data.events) {
+            lastPresenceEventId = Math.max(lastPresenceEventId, event.id);
+
+            if (receivedInitialActivity) {
+                appendPresenceNotice(event);
+            }
+        }
+
+        receivedInitialActivity = true;
+    } finally {
+        window.setTimeout(pollRoomActivity, 3000);
+    }
+}
+
+function renderActiveUsers(users) {
+    const list = document.getElementById("activeUsers");
+    list.replaceChildren();
+
+    for (const user of users) {
+        const item = document.createElement("li");
+        const name = user.full_name || `Пользователь ${user.user_id}`;
+        item.textContent = user.username
+            ? `${name} (@${user.username})`
+            : name;
+        list.appendChild(item);
+    }
+}
+
+function appendPresenceNotice(event) {
+    const messages = document.getElementById("roomMessages");
+    const item = document.createElement("div");
+    item.className = "message system-message";
+
+    const name = event.full_name || `Пользователь ${event.user_id}`;
+    item.textContent = event.type === "user_joined"
+        ? `${name} присоединился к комнате`
+        : `${name} покинул комнату`;
+
+    messages.appendChild(item);
+}
+
+
+await sendPresenceHeartbeat();
+await pollRoomActivity();
+
+window.setInterval(() => {
+    sendPresenceHeartbeat().catch(console.error);
+}, 10000);
+
+
+window.addEventListener("pagehide", () => {
+    fetchWithAuth(
+        `${API_BASE}/rooms/${roomId}/presence/${clientId}`,
+        { method: "DELETE", keepalive: true }
+    ).catch(() => {});
+});

@@ -51,7 +51,6 @@ async def serve_dashboard_page():
 
 
 @app.get("/room", include_in_schema=False)
-
 async def serve_room_page():
     return FileResponse(FRONTEND_DIR / "room.html")
 

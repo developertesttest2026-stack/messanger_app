@@ -22,6 +22,9 @@ class CreateSessionResponse(SQLModel):
 class ResolveSessionRequest(SQLModel):
     session_token: str
     telegram_id: int
+    username: str 
+    full_name: str
+
 
 
 class ResolveSessionResponse(SQLModel):
@@ -87,8 +90,8 @@ async def resolve_session(req: ResolveSessionRequest, session: AsyncSession = De
     if not user:
         user = User(
             telegram_id=req.telegram_id,
-            username="",
-            full_name="",
+            username=req.username,
+            full_name=req.full_name,
         )
         session.add(user)
         await session.flush()
