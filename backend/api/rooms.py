@@ -9,14 +9,15 @@ router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 @router.get("/")
 async def get_rooms(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    statement = (
-        select(ChatRoom)
-        .join(RoomMember, RoomMember.room_id == ChatRoom.id)
-        .where(RoomMember.user_id == user.telegram_id)
-        .order_by(ChatRoom.created_at.desc())
+    rooms_result = await session.execute(
+        select(ChatRoom).order_by(ChatRoom.created_at.desc())
     )
-    result = await session.execute(statement)
-    rooms = result.scalars().all()
+    rooms = rooms_result.scalars().all()
+    memberships_result = await session.execute(
+        select(RoomMember.room_id).where(RoomMember.user_id == user.telegram_id)
+    )
+    joined_room_ids = set(memberships_result.scalars().all())
+
     return [
         {
             "id": room.id,
@@ -24,6 +25,7 @@ async def get_rooms(user: User = Depends(get_current_user), session: AsyncSessio
             "description": room.description,
             "created_by": room.created_by,
             "created_at": room.created_at.isoformat() if room.created_at else None,
+            "is_member": room.id in joined_room_ids,
         }
         for room in rooms
     ]
@@ -62,27 +64,46 @@ async def get_room(room_id: int, user: User = Depends(get_current_user), session
     if not room:
         raise HTTPException(status_code=404, detail="Комната не найдена")
 
-    member = await session.execute(
+    member_result = await session.execute(
+        select(RoomMember.room_id).where(
+            RoomMember.room_id == room_id,
+            RoomMember.user_id == user.telegram_id,
+        )
+    )
+    return {
+        "id": room.id,
+        "name": room.name,
+        "description": room.description,
+        "is_member": member_result.scalar_one_or_none() is not None,
+    }
+
+
+@router.post("/{room_id}/join")
+async def join_room(
+    room_id: int,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    room = await session.get(ChatRoom, room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="Комната не найдена")
+
+    member_result = await session.execute(
         select(RoomMember).where(
             RoomMember.room_id == room_id,
             RoomMember.user_id == user.telegram_id,
         )
     )
-    if not member.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="Вы не участник комнаты")
+    if not member_result.scalar_one_or_none():
+        session.add(RoomMember(room_id=room_id, user_id=user.telegram_id))
+        await session.commit()
 
-    return {
-        "id": room.id,
-        "name": room.name,
-        "description": room.description,
-    }
+    return {"room_id": room_id, "is_member": True}
 
 
 @router.get("/{room_id}/messages")
 async def get_room_messages(room_id: int, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    room = await session.get(ChatRoom, room_id)
-    if not room:
-        raise HTTPException(status_code=404, detail="Комната не найдена")
+    await _ensure_room_access(room_id, user, session)
 
     result = await session.execute(
         select(Message, User.full_name, User.username)
@@ -112,9 +133,7 @@ class CreateMessageRequest(SQLModel):
 
 @router.post("/{room_id}/messages")
 async def create_message(room_id: int, req: CreateMessageRequest, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    room = await session.get(ChatRoom, room_id)
-    if not room:
-        raise HTTPException(status_code=404, detail="Комната не найдена")
+    await _ensure_room_access(room_id, user, session)
 
     message = Message(
         room_id=room_id,
@@ -212,7 +231,7 @@ class PresenceRequest(SQLModel):
 
 
 
-    @router.post("/{room_id}/presence")
+@router.post("/{room_id}/presence")
 async def update_presence(
     room_id: int,
     req: PresenceRequest,

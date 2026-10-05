@@ -26,7 +26,7 @@ function showEmptyState(text) {
 }
 
 async function loadRooms() {
-    const res = await fetchWithAuth(`${API_BASE}/rooms`);
+    const res = await fetchWithAuth(`${API_BASE}/rooms/`);
     const rooms = await res.json();
     const list = document.getElementById("roomList");
     list.replaceChildren();
@@ -41,8 +41,11 @@ async function loadRooms() {
 
     rooms.forEach(room => {
         const item = document.createElement("li");
-        item.innerHTML = `<button data-room-id="${room.id}">${room.name}</button>`;
-        item.querySelector("button").addEventListener("click", () => openRoom(room.id));
+        const button = document.createElement("button");
+        button.dataset.roomId = room.id;
+        button.textContent = room.name;
+        button.addEventListener("click", () => openRoom(room.id));
+        item.appendChild(button);
         list.appendChild(item);
     });
 }
@@ -52,7 +55,7 @@ async function createRoom() {
     if (!name) return;
 
     const description = prompt("Описание комнаты", "");
-    const res = await fetchWithAuth(`${API_BASE}/rooms`, {
+    const res = await fetchWithAuth(`${API_BASE}/rooms/`, {
         method: "POST",
         body: JSON.stringify({ name, description })
     });
@@ -63,20 +66,7 @@ async function createRoom() {
 }
 
 async function openRoom(roomId) {
-    const res = await fetchWithAuth(`${API_BASE}/rooms/${roomId}`);
-    if (!res.ok) {
-        alert("Не удалось открыть комнату");
-        return;
-    }
-
-    const room = await res.json();
-    activeRoomId = room.id;
-    document.getElementById("roomHeader").textContent = room.name;
-    document.getElementById("messageForm").hidden = false;
-    document.querySelectorAll("#roomList button[data-room-id]").forEach(button => {
-        button.classList.toggle("active", Number(button.dataset.roomId) === room.id);
-    });
-    await loadMessages(room.id);
+    window.location.href = `/room?id=${encodeURIComponent(roomId)}`;
 }
 
 async function loadMessages(roomId) {
