@@ -1,4 +1,4 @@
-import uvicorn
+# import uvicorn
 
 from api.main import app
 
