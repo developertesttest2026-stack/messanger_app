@@ -5,8 +5,9 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 import settings
+import os
 
-API_BASE_URL = "http://127.0.0.1:8000"
+
 
 
 async def resolve_session_with_api(session_token: str, telegram_id: int, fullname:str, username:str) -> str:
@@ -19,7 +20,7 @@ async def resolve_session_with_api(session_token: str, telegram_id: int, fullnam
     }).encode("utf-8")
 
     request = urllib.request.Request(
-        f"{API_BASE_URL}/auth/resolve-session",
+        f"{settings.API_BASE_URL}/auth/resolve-session",
         data=payload,
         headers={"Content-Type": "application/json"},
         method="POST",
