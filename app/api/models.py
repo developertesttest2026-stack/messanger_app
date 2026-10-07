@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field
 from datetime import datetime,timezone,timedelta
 from typing import Optional
-
+from sqlalchemy import UniqueConstraint 
 
 class User(SQLModel, table=True):
     __tablename__ = "users"
@@ -52,3 +52,32 @@ class Message(SQLModel, table=True):
     user_id: int = Field(foreign_key="users.telegram_id", nullable=False)
     text: str = Field(max_length=5000)
     created_at: Optional[datetime] = Field(default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=3))
+
+
+
+ 
+class RoomInvitation(SQLModel, table=True): 
+    __tablename__ = "room_invitations" 
+    __table_args__ = ( 
+        UniqueConstraint( 
+            "room_id", 
+            "invitee_id", 
+            name="uq_room_invitation_room_invitee", 
+        ), 
+    ) 
+ 
+    id: int | None = Field(default=None, primary_key=True) 
+    room_id: int = Field(foreign_key="chat_rooms.id", 
+nullable=False, index=True) 
+    invitee_id: int = Field(foreign_key="users.telegram_id", 
+nullable=False, index=True) 
+    invited_by_id: int = Field(foreign_key="users.telegram_id", 
+nullable=False) 
+    status: str = Field(default="pending", max_length=20, 
+nullable=False) 
+    is_read: bool = Field(default=False, nullable=False) 
+    created_at: datetime = Field( 
+        default_factory=lambda: datetime.now(timezone.utc), 
+        nullable=False, 
+    ) 
+    responded_at: datetime | None = Field(default=None)

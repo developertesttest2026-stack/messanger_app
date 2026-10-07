@@ -4,31 +4,47 @@ from sqlmodel import SQLModel, select
 from api.models import ChatRoom, RoomMember, Message,User
 from api.auth import get_current_user
 from api.database import get_session
+from sqlalchemy import or_ 
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
 
-@router.get("/")
-async def get_rooms(user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
-    rooms_result = await session.execute(
-        select(ChatRoom).order_by(ChatRoom.created_at.desc())
-    )
-    rooms = rooms_result.scalars().all()
-    memberships_result = await session.execute(
-        select(RoomMember.room_id).where(RoomMember.user_id == user.telegram_id)
-    )
-    joined_room_ids = set(memberships_result.scalars().all())
 
-    return [
-        {
-            "id": room.id,
-            "name": room.name,
-            "description": room.description,
-            "created_by": room.created_by,
-            "created_at": room.created_at.isoformat() if room.created_at else None,
-            "is_member": room.id in joined_room_ids,
-        }
-        for room in rooms
-    ]
+@router.get("/") 
+async def get_rooms( 
+    user: User = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session), 
+): 
+    result = await session.execute( 
+        select(ChatRoom, RoomMember.user_id) 
+        .outerjoin( 
+            RoomMember, 
+            (RoomMember.room_id == ChatRoom.id) 
+            & (RoomMember.user_id == user.telegram_id), 
+        ) 
+        .where( 
+            or_( 
+                ChatRoom.created_by == user.telegram_id, 
+                RoomMember.user_id == user.telegram_id, 
+            ) 
+        ) 
+        .distinct() 
+        .order_by(ChatRoom.created_at.desc()) 
+    ) 
+    rooms = result.all() 
+ 
+    return [ 
+        { 
+            "id": room.id, 
+            "name": room.name, 
+            "description": room.description, 
+            "created_by": room.created_by, 
+            "created_at": room.created_at.isoformat() if 
+room.created_at else None, 
+            "is_member": member_id is not None, 
+            "is_creator": room.created_by == user.telegram_id, 
+        } 
+        for room, member_id in rooms 
+    ] 
 
 class CreateRoomRequest(SQLModel):
     name: str
