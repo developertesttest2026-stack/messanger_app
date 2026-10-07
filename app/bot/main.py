@@ -1,13 +1,18 @@
 import json
+import logging
 import urllib.request
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 import settings
-import os
 
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 async def resolve_session_with_api(session_token: str, telegram_id: int, fullname:str, username:str) -> str:
@@ -49,6 +54,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try: 
         code = await resolve_session_with_api(session_token, tg_id, full_name, username)
     except Exception:
+        logger.exception("Failed to resolve Telegram login session through the API")
         await update.message.reply_text(
             "❌ Сессия не найдена или уже использована.\n\n"
             "Обнови страницу сайта и попробуй снова."
@@ -75,6 +81,5 @@ def main():
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
-    print("Бот запущен!")
+    logger.info("Telegram bot is starting")
     main()
-
