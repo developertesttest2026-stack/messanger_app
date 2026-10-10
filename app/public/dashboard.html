@@ -156,12 +156,66 @@
             min-height: 240px;
         }
     }
+    #notificationBtn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border: 1px solid #cbd7da;
+        border-radius: 5px;
+        background: #fff;
+        color: inherit;
+        cursor: pointer;
+    }
+
+    #unreadCount {
+        min-width: 20px;
+        padding: 2px 6px;
+        border-radius: 10px;
+        background: #176b87;
+        color: #fff;
+        font-size: 12px;
+        text-align: center;
+    }
+
+    #notificationPanel {
+        max-height: 50vh;
+        margin-top: 12px;
+        padding: 12px;
+        overflow-y: auto;
+        border: 1px solid #cbd7da;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    #notificationPanel[hidden] {
+        display: none;
+    }
+
+    #notificationList {
+        padding-left: 20px;
+    }
+
+    #notificationList li {
+        margin: 10px 0;
+        overflow-wrap: anywhere;
+    }
 </style>
 </head>
 <body>
     <div class="app">
         <aside class="sidebar">
             <a class="profile-link" id="profileLink" href="/profile">Профиль</a>
+        
+            <button id="notificationBtn" type="button" aria-label="Уведомления" aria-expanded="false">
+                🔔<span id="unreadCount" aria-live="polite">0</span>
+            </button>
+            <section id="notificationPanel" aria-label="Уведомления" hidden>
+                <h2>Приглашения</h2>
+                <p id="notificationError" role="alert"></p>
+                <ul id="notificationList"></ul>
+            </section>
+
             <h2>Комнаты</h2>
             <button id="createRoomBtn">+ Создать комнату</button>
             <ul id="roomList"></ul>
@@ -178,7 +232,7 @@
             </form>
         </main>
     </div>
-
     <script src="/static/dashboard.js"></script>
+    <script src="/static/notifications.js"></script>
 </body>
 </html>

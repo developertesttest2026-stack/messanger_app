@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from api.database import init_db
 from api.rooms import router as rooms_router
 from api.routes import router as auth_router
+from api.invitations import router as invitations_router
 
 PUBLIC_DIR = Path(__file__).resolve().parents[1] / "public"
 STATIC_DIR = PUBLIC_DIR / "static"
@@ -51,4 +52,4 @@ async def serve_room_page():
 
 app.include_router(rooms_router)
 app.include_router(auth_router)
-
+app.include_router(invitations_router)  

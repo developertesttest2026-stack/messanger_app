@@ -91,30 +91,10 @@ async def get_room(room_id: int, user: User = Depends(get_current_user), session
         "name": room.name,
         "description": room.description,
         "is_member": member_result.scalar_one_or_none() is not None,
+        "is_creator": room.created_by == user.telegram_id,
     }
 
 
-@router.post("/{room_id}/join")
-async def join_room(
-    room_id: int,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
-):
-    room = await session.get(ChatRoom, room_id)
-    if not room:
-        raise HTTPException(status_code=404, detail="Комната не найдена")
-
-    member_result = await session.execute(
-        select(RoomMember).where(
-            RoomMember.room_id == room_id,
-            RoomMember.user_id == user.telegram_id,
-        )
-    )
-    if not member_result.scalar_one_or_none():
-        session.add(RoomMember(room_id=room_id, user_id=user.telegram_id))
-        await session.commit()
-
-    return {"room_id": room_id, "is_member": True}
 
 
 @router.get("/{room_id}/messages")
@@ -342,3 +322,42 @@ async def get_room_activity(
         "active_users": active_users,
         "events": events,
     }
+
+
+
+@router.get("/{room_id}/members") 
+async def get_room_members( 
+    room_id: int, 
+    user: User = Depends(get_current_user), 
+    session: AsyncSession = Depends(get_session), 
+): 
+    room = await session.get(ChatRoom, room_id) 
+    if room is None: 
+        raise HTTPException(status_code=404, detail="Комната не найдена") 
+ 
+    membership = await session.execute( 
+        select(RoomMember.id).where( 
+            RoomMember.room_id == room_id, 
+            RoomMember.user_id == user.telegram_id, 
+        ) 
+    ) 
+    is_member = membership.scalar_one_or_none() is not None 
+    if not is_member and room.created_by != user.telegram_id: 
+        raise HTTPException(status_code=403, detail="Нет доступа к участникам комнаты") 
+ 
+    result = await session.execute( 
+        select(RoomMember, User) 
+        .join(User, User.telegram_id == RoomMember.user_id) 
+        .where(RoomMember.room_id == room_id) 
+        .order_by(RoomMember.joined_at.asc()) 
+    ) 
+    return [ 
+        { 
+            "user_id": member.user_id, 
+            "username": profile.username, 
+            "full_name": profile.full_name, 
+            "joined_at": member.joined_at.isoformat() if 
+member.joined_at else None, 
+        } 
+        for member, profile in result.all() 
+    ] 

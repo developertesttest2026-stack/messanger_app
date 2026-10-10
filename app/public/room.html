@@ -34,21 +34,6 @@
             border-bottom: 1px solid #dce4e5;
         }
         .room-header a { color: #176b87; }
-        #joinPanel {
-            grid-column: 1 / -1;
-            align-self: start;
-            padding: 16px 0;
-        }
-        #joinRoomBtn {
-            padding: 10px 16px;
-            border: 0;
-            border-radius: 5px;
-            background: #176b87;
-            color: #fff;
-            font: inherit;
-            cursor: pointer;
-        }
-        #joinRoomBtn:disabled { opacity: 0.6; cursor: wait; }
         .room-chat { display: flex; flex-direction: column; min-width: 0; }
         .messages {
             display: flex;
@@ -122,11 +107,6 @@
             <h1 id="roomTitle">Комната</h1>
         </header>
 
-        <section id="joinPanel" hidden>
-            <p>Вы пока не участник этой комнаты.</p>
-            <button id="joinRoomBtn" type="button">Вступить в комнату</button>
-            <p id="joinError" role="alert"></p>
-        </section>
 
         <main id="roomChat" class="room-chat" hidden>
             <div id="roomMessages" class="messages"></div>
@@ -136,10 +116,22 @@
                 <button type="submit">Отправить</button>
             </form>
         </main>
-
         <aside id="roomMembers" class="room-members" aria-live="polite" hidden>
-            <h2>В комнате</h2>
-            <ul id="activeUsers"></ul>
+             
+            <section aria-label="Участники комнаты"> 
+                <h2>Участники</h2> 
+                <ul id="memberList"></ul> 
+                <p id="memberError" role="alert"></p> 
+                <button id="inviteMemberBtn" type="button" 
+                     hidden>Пригласить</button> 
+                <p id="inviteStatus" role="status"></p> 
+            </section> 
+            
+            <section aria-label="Сейчас онлайн"> 
+                    <h2>В комнате</h2>
+                    <ul id="activeUsers"></ul>
+            </section>
+
         </aside>
     </div>
 

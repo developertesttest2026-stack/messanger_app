@@ -41,8 +41,13 @@ async function loadRoomDetails() {
         window.location.href = "/dashboard";
         return false;
     }
-
     const room = await res.json();
+    const inviteButton = document.getElementById("inviteMemberBtn"); 
+    if (room.is_creator) { 
+        inviteButton.hidden = false; 
+        inviteButton.addEventListener("click", inviteMember); 
+    } 
+
     document.getElementById("roomTitle").textContent = room.name;
     return room;
 }
@@ -199,7 +204,14 @@ function leaveRoom() {
 }
 
 async function enterRoom() {
-    document.getElementById("joinPanel").hidden = true;
+
+        try { 
+            await loadRoomMembers(); 
+        } catch (error) { 
+            document.getElementById("memberError").textContent = 
+        error.message; 
+        } 
+
     document.getElementById("roomChat").hidden = false;
     document.getElementById("roomMembers").hidden = false;
     document.getElementById("roomMessageForm").addEventListener("submit", sendMessage);
@@ -214,32 +226,71 @@ async function enterRoom() {
     }, 10000);
 }
 
-async function joinRoom() {
-    const button = document.getElementById("joinRoomBtn");
-    const error = document.getElementById("joinError");
-    button.disabled = true;
-    error.textContent = "";
 
-    try {
-        const response = await fetchWithAuth(`${API_BASE}/rooms/${roomId}/join`, {
-            method: "POST",
-        });
-        if (response.status === 401) {
-            localStorage.removeItem("access_token");
-            window.location.href = "/";
-            return;
-        }
-        if (!response.ok) {
-            throw new Error("Не удалось вступить в комнату");
-        }
 
-        await enterRoom();
-    } catch (joinError) {
-        error.textContent = joinError.message;
-    } finally {
-        button.disabled = false;
+async function loadRoomMembers() { 
+    const response = await fetchWithAuth( 
+        `${API_BASE}/rooms/${roomId}/members` 
+    ); 
+    if (!response.ok) { 
+        throw new Error("Не удалось загрузить участников комнаты"); 
+    } 
+ 
+    const members = await response.json(); 
+    const list = document.getElementById("memberList"); 
+    list.replaceChildren(); 
+ 
+    if (members.length === 0) { 
+        const empty = document.createElement("li"); 
+        empty.textContent = "Участников пока нет"; 
+        list.appendChild(empty); 
+        return; 
+    } 
+ 
+    for (const member of members) { 
+        const item = document.createElement("li"); 
+        item.textContent = member.full_name 
+            || (member.username ? `@${member.username}` : `Пользователь ${member.user_id}`); 
+        list.appendChild(item); 
+    } 
+} 
+ 
+async function inviteMember() { 
+    const input = window.prompt("Введите Telegram ID пользователя"); 
+    if (input === null) return; 
+ 
+    const telegramId = Number(input.trim()); 
+    const status = document.getElementById("inviteStatus"); 
+    status.textContent = ""; 
+ 
+    if (!Number.isSafeInteger(telegramId) || telegramId <= 0) { 
+        status.textContent = "Введите корректный Telegram ID"; 
+        return; 
+    } 
+ 
+    try { 
+        const response = await fetchWithAuth( 
+           `${API_BASE}/rooms/${roomId}/invite`, 
+            { 
+                method: "POST", 
+                body: JSON.stringify({ telegram_id: telegramId 
+}), 
+            } 
+        ); 
+        const result = await response.json(); 
+        if (!response.ok) { 
+            throw new Error(result.detail || "Не удалось отправить приглашение"); 
+        } 
+ 
+        status.textContent = "Приглашение отправлено. Ожидается принятие."; 
+        // Намеренно не вызываем loadRoomMembers(): адресат еще не участник. 
+    } catch (error) { 
+        status.textContent = error.message; 
     }
 }
+
+
+
 
 window.addEventListener("DOMContentLoaded", async () => {
     if (!roomId) {
@@ -255,8 +306,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!room) return;
 
     if (!room.is_member) {
-        document.getElementById("joinPanel").hidden = false;
-        document.getElementById("joinRoomBtn").addEventListener("click", joinRoom);
+        window.location.href = "/dashboard";
         return;
     }
 
