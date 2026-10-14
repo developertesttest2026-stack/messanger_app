@@ -83,3 +83,15 @@ nullable=False)
         nullable=False, 
     ) 
     responded_at: datetime | None = Field(default=None)
+
+
+class RoomInviteLink(SQLModel, table=True):
+    __tablename__ = "room_invite_links"
+
+    id: int | None = Field(default=None, primary_key=True)
+    room_id: int = Field(foreign_key="chat_rooms.id", nullable=False, index=True)
+    created_by_id: int = Field(foreign_key="users.telegram_id", nullable=False)
+    token_hash: str = Field(unique=True, index=True, max_length=64)
+    expires_at: int = Field(nullable=False, index=True)
+    used_at: int | None = Field(default=None)
+    revoked_at: int | None = Field(default=None)

@@ -68,6 +68,11 @@
             border-radius: 5px;
             font: inherit;
         }
+        #inviteLinkInput {
+            width: 100%;
+            margin: 8px 0;
+            padding: 8px;
+        }
         .room-chat button {
             padding: 10px 16px;
             border: 0;
@@ -184,8 +189,15 @@
                 <h2>Участники</h2> 
                 <ul id="memberList"></ul> 
                 <p id="memberError" role="alert"></p> 
-                <button id="inviteMemberBtn" type="button" 
-                     hidden>Пригласить</button> 
+                <button id="inviteMemberBtn" type="button" hidden>
+                    Создать ссылку-приглашение
+                </button>
+                <div id="inviteLinkContainer" hidden>
+                    <label for="inviteLinkInput">Ссылка (действует 24 часа)</label>
+                    <input id="inviteLinkInput" type="url" readonly>
+                    <button id="copyInviteLinkBtn" type="button">Скопировать ссылку</button>
+                    <button id="revokeInviteLinkBtn" type="button">Отозвать ссылку</button>
+                </div>
                 <p id="inviteStatus" role="status"></p> 
             </section> 
             

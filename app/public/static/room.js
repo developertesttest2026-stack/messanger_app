@@ -14,6 +14,7 @@ let messagePollTimer = null;
 let heartbeatTimer = null;
 let leavingRoom = false;
 let roomSessionActive = false;
+let activeInviteLinkId = null;
 
 function getToken() {
     return localStorage.getItem("access_token");
@@ -60,7 +61,13 @@ async function loadRoomDetails() {
     const inviteButton = document.getElementById("inviteMemberBtn"); 
     if (room.is_creator) { 
         inviteButton.hidden = false; 
-        inviteButton.addEventListener("click", inviteMember); 
+        inviteButton.addEventListener("click", createInviteLink);
+        document
+            .getElementById("copyInviteLinkBtn")
+            .addEventListener("click", copyInviteLink);
+        document
+            .getElementById("revokeInviteLinkBtn")
+            .addEventListener("click", revokeInviteLink);
     } 
 
     document.getElementById("roomTitle").textContent = room.name;
@@ -325,37 +332,79 @@ async function loadRoomMembers() {
     } 
 } 
  
-async function inviteMember() { 
-    const input = window.prompt("Введите Telegram ID пользователя"); 
-    if (input === null) return; 
- 
-    const telegramId = Number(input.trim()); 
+async function createInviteLink() {
     const status = document.getElementById("inviteStatus"); 
+    const button = document.getElementById("inviteMemberBtn");
     status.textContent = ""; 
- 
-    if (!Number.isSafeInteger(telegramId) || telegramId <= 0) { 
-        status.textContent = "Введите корректный Telegram ID"; 
-        return; 
-    } 
- 
-    try { 
-        const response = await fetchWithAuth( 
-           `${API_BASE}/rooms/${roomId}/invite`, 
-            { 
-                method: "POST", 
-                body: JSON.stringify({ telegram_id: telegramId 
-}), 
-            } 
-        ); 
-        const result = await response.json(); 
-        if (!response.ok) { 
-            throw new Error(result.detail || "Не удалось отправить приглашение"); 
-        } 
- 
-        status.textContent = "Приглашение отправлено. Ожидается принятие."; 
-        // Намеренно не вызываем loadRoomMembers(): адресат еще не участник. 
-    } catch (error) { 
-        status.textContent = error.message; 
+    button.disabled = true;
+
+    try {
+        const response = await fetchWithAuth(
+            `${API_BASE}/rooms/${roomId}/invite-link`,
+            { method: "POST" }
+        );
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.detail || "Не удалось создать ссылку.");
+        }
+
+        activeInviteLinkId = result.invite_id;
+        const inviteUrl = new URL(result.invite_path, window.location.origin).href;
+        document.getElementById("inviteLinkInput").value = inviteUrl;
+        document.getElementById("inviteLinkContainer").hidden = false;
+
+        try {
+            await navigator.clipboard.writeText(inviteUrl);
+            status.textContent = "Ссылка создана и скопирована. Она действует 24 часа.";
+        } catch {
+            status.textContent =
+                "Ссылка создана. Скопируйте её из поля выше; она действует 24 часа.";
+        }
+    } catch (error) {
+        status.textContent = error.message;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function copyInviteLink() {
+    const input = document.getElementById("inviteLinkInput");
+    const status = document.getElementById("inviteStatus");
+    try {
+        await navigator.clipboard.writeText(input.value);
+        status.textContent = "Ссылка скопирована.";
+    } catch {
+        input.focus();
+        input.select();
+        status.textContent =
+            "Не удалось скопировать автоматически. Скопируйте выделенный текст.";
+    }
+}
+
+async function revokeInviteLink() {
+    if (activeInviteLinkId === null) return;
+
+    const status = document.getElementById("inviteStatus");
+    const button = document.getElementById("revokeInviteLinkBtn");
+    button.disabled = true;
+    try {
+        const response = await fetchWithAuth(
+            `${API_BASE}/rooms/${roomId}/invite-links/${activeInviteLinkId}/revoke`,
+            { method: "POST" }
+        );
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.detail || "Не удалось отозвать ссылку.");
+        }
+
+        activeInviteLinkId = null;
+        document.getElementById("inviteLinkContainer").hidden = true;
+        document.getElementById("inviteLinkInput").value = "";
+        status.textContent = "Ссылка отозвана.";
+    } catch (error) {
+        status.textContent = error.message;
+    } finally {
+        button.disabled = false;
     }
 }
 

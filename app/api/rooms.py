@@ -458,3 +458,6 @@ member.joined_at else None,
         } 
         for member, profile in result.all() 
     ] 
+
+
+
