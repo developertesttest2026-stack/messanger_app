@@ -213,7 +213,7 @@ async def update_message(
 
 
 
-router.delete( 
+@router.delete( 
     "/{room_id}/messages/{message_id}", 
     status_code=status.HTTP_204_NO_CONTENT, 
 ) 
